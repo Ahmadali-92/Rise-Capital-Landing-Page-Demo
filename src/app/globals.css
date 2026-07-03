@@ -1,0 +1,42 @@
+:root {
+  /* Real fonts (Archivo / Hanken Grotesk / Space Mono) load via next/font as
+     --font-rc-* vars; these are system-stack fallbacks for anything unstyled. */
+  --font-sans: var(--font-rc-body, 'Inter'), 'Segoe UI', Roboto, Arial, sans-serif;
+  --font-mono: var(--font-rc-mono, ui-monospace), ui-monospace, monospace;
+  --gold: #d9a428;
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  /* `clip` prevents horizontal overflow WITHOUT creating a scroll container,
+     so `position: sticky` headers (e.g. the equipment detail page) keep working.
+     `hidden` here would silently break sticky positioning on descendants. */
+  overflow-x: clip;
+}
+
+body {
+  font-family: var(--font-sans);
+  line-height: 1.6;
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
