@@ -297,8 +297,8 @@ export default function PremiumLanding() {
           )}
 
           <Box
-            component={Link}
-            href={CHECKOUT_ROUTE}
+            component="button"
+            type="button"
             sx={{
               display: 'inline-flex',
               alignItems: 'center',
