@@ -9,6 +9,7 @@ import Typography from '@mui/material/Typography';
 import InputBase from '@mui/material/InputBase';
 
 import PremiumFooter from '@/shared/components/landing/PremiumFooter';
+import SkeletonImage from '@/shared/components/common/SkeletonImage';
 import ThemeToggle from '@/shared/components/common/ThemeToggle';
 import {EQUIPMENT_ROUTES, ROOT_ROUTE} from '@/shared/constants/paths';
 import {CATALOG} from '@/shared/data/catalog';
@@ -713,17 +714,18 @@ function FleetCard({item, index}: {item: Equipment; index: number}) {
           'html.dark &': {borderColor: 'rgba(255,255,255,0.1)'},
         }}
       >
-        <Box
-          component="img"
+        <SkeletonImage
           className="rc-img"
           src={item.image}
           alt={item.name}
           loading="lazy"
+          skeletonZIndex={3}
           sx={{
             height: '100%',
             width: '100%',
             objectFit: 'cover',
-            transition: 'transform 620ms cubic-bezier(0.22,1,0.36,1)',
+            transition:
+              'transform 620ms cubic-bezier(0.22,1,0.36,1), opacity 420ms ease',
           }}
         />
         {/* bottom gradient */}

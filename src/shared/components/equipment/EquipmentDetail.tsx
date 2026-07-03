@@ -25,6 +25,7 @@ import Typography from '@mui/material/Typography';
 import {useColorScheme} from '@mui/material/styles';
 
 import PremiumFooter from '@/shared/components/landing/PremiumFooter';
+import SkeletonImage from '@/shared/components/common/SkeletonImage';
 import ThemeToggle from '@/shared/components/common/ThemeToggle';
 import {ROOT_ROUTE} from '@/shared/constants/paths';
 import {getEquipmentById} from '@/shared/data/catalog';
@@ -631,6 +632,7 @@ export default function EquipmentDetail({id}: {id: string}) {
                               aria-label={`View ${item.name} — photo ${idx + 1} of ${imgs.length}`}
                               aria-pressed={active}
                               sx={{
+                                position: 'relative', // anchors the skeleton
                                 p: 0,
                                 flexShrink: 0,
                                 borderRadius: 1.5,
@@ -648,8 +650,7 @@ export default function EquipmentDetail({id}: {id: string}) {
                                 },
                               }}
                             >
-                              <Box
-                                component="img"
+                              <SkeletonImage
                                 src={img}
                                 alt=""
                                 sx={{

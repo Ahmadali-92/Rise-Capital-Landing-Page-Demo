@@ -9,6 +9,8 @@ import Dialog from '@mui/material/Dialog';
 import IconButton from '@mui/material/IconButton';
 import type {SxProps, Theme} from '@mui/material/styles';
 
+import SkeletonImage from '@/shared/components/common/SkeletonImage';
+
 const ZOOM = 2.25;
 const LENS_SIZE = 150;
 
@@ -87,11 +89,13 @@ export default function EquipmentImageViewer({
           ...containerSx,
         }}
       >
-        <Box
-          component="img"
+        {/* zIndex 7 — the skeleton covers every overlay (badges, buttons)
+            so the whole plate reads as one loading block */}
+        <SkeletonImage
           src={src}
           alt={alt}
           draggable={false}
+          skeletonZIndex={7}
           sx={{
             width: '100%',
             height: '100%',
