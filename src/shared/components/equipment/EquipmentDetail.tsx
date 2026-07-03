@@ -812,6 +812,7 @@ export default function EquipmentDetail({id}: {id: string}) {
                     borderRadius: '20px',
                     bgcolor: C.amberBg,
                     color: C.amberText,
+                    border: `1px solid ${GOLD}80`,
                   }}
                 >
                   {t}
