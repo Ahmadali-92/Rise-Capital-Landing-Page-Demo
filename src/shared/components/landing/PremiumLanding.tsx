@@ -2,7 +2,7 @@
 
 import {useMemo, useState} from 'react';
 import Link from 'next/link';
-import {ArrowUpRight, MapPin, Search, SearchX} from 'lucide-react';
+import {ArrowUpRight, LogIn, MapPin, Search, SearchX, ShoppingCart} from 'lucide-react';
 
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
@@ -11,7 +11,8 @@ import InputBase from '@mui/material/InputBase';
 import PremiumFooter from '@/shared/components/landing/PremiumFooter';
 import SkeletonImage from '@/shared/components/common/SkeletonImage';
 import ThemeToggle from '@/shared/components/common/ThemeToggle';
-import {EQUIPMENT_ROUTES, ROOT_ROUTE} from '@/shared/constants/paths';
+import {CHECKOUT_ROUTE, EQUIPMENT_ROUTES, ROOT_ROUTE} from '@/shared/constants/paths';
+import {useCart} from '@/shared/hooks/useCart';
 import {CATALOG} from '@/shared/data/catalog';
 import type {Equipment} from '@/shared/types/rental';
 
@@ -44,6 +45,9 @@ export default function PremiumLanding() {
   const ready = true;
   const [activeCat, setActiveCat] = useState('All');
   const [query, setQuery] = useState('');
+  // Live cart count for the header badge (sessionStorage-backed demo cart).
+  const {items: cartItems, hydrated: cartHydrated} = useCart();
+  const cartCount = cartHydrated ? cartItems.length : 0;
 
   const categories = useMemo(
     () => ['All', ...Array.from(new Set(equipment.map((e) => e.category)))],
@@ -246,10 +250,59 @@ export default function PremiumLanding() {
             flexShrink: 0,
           }}
         >
+          {/* cart — shows a live count once something is reserved */}
+          {cartCount > 0 && (
+            <Box
+              component={Link}
+              href={CHECKOUT_ROUTE}
+              aria-label={`Cart — ${cartCount} item${cartCount === 1 ? '' : 's'}`}
+              sx={{
+                position: 'relative',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 42,
+                height: 42,
+                borderRadius: 1.5,
+                color: 'text.primary',
+                border: '1px solid',
+                borderColor: 'divider',
+                transition: 'all 160ms ease',
+                '&:hover': {borderColor: GOLD, color: GOLD},
+                '&:focus-visible': {outline: `2px solid ${GOLD}`, outlineOffset: 2},
+              }}
+            >
+              <ShoppingCart size={18} />
+              <Box
+                sx={{
+                  position: 'absolute',
+                  top: -6,
+                  right: -6,
+                  minWidth: 18,
+                  height: 18,
+                  px: 0.5,
+                  borderRadius: '9px',
+                  bgcolor: GOLD,
+                  color: INK,
+                  fontFamily: MONO,
+                  fontSize: 10.5,
+                  fontWeight: 700,
+                  display: 'grid',
+                  placeItems: 'center',
+                }}
+              >
+                {cartCount}
+              </Box>
+            </Box>
+          )}
+
           <Box
-            component="button"
-            type="button"
+            component={Link}
+            href={CHECKOUT_ROUTE}
             sx={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 0.75,
               cursor: 'pointer',
               fontFamily: BODY,
               fontWeight: 700,
@@ -271,9 +324,10 @@ export default function PremiumLanding() {
                 color: INK,
                 borderColor: '#bd8a1e',
               },
+              '&:focus-visible': {outline: `2px solid ${INK}`, outlineOffset: 2},
             }}
           >
-            Sign in
+            <LogIn size={15} /> Sign in
           </Box>
           <ThemeToggle sx={{color: 'text.primary'}} />
         </Box>

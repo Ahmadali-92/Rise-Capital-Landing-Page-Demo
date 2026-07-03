@@ -2,6 +2,7 @@
 
 import {useMemo, useState} from 'react';
 import Link from 'next/link';
+import {useRouter} from 'next/navigation';
 import {
   AlertTriangle,
   ArrowDownRight,
@@ -27,8 +28,9 @@ import {useColorScheme} from '@mui/material/styles';
 import PremiumFooter from '@/shared/components/landing/PremiumFooter';
 import SkeletonImage from '@/shared/components/common/SkeletonImage';
 import ThemeToggle from '@/shared/components/common/ThemeToggle';
-import {ROOT_ROUTE} from '@/shared/constants/paths';
+import {CHECKOUT_ROUTE, ROOT_ROUTE} from '@/shared/constants/paths';
 import {getEquipmentById} from '@/shared/data/catalog';
+import {addCartItem} from '@/shared/hooks/useCart';
 
 import RangeCalendar, {
   daysBetween,
@@ -43,6 +45,7 @@ const BODY = 'var(--font-rc-body)';
 const MONO = 'var(--font-rc-mono)';
 const GOLD = '#D9A428';
 const INK = '#0B0B0C';
+const TAX_RATE = 0.085; // kept in lock-step with the checkout so totals match
 
 type DetailColors = {
   bg: string;
@@ -161,7 +164,15 @@ function NotFound({colors}: {colors: DetailColors}) {
   );
 }
 
-function Legend({color, label}: {color: string; label: string}) {
+function Legend({
+  color,
+  label,
+  colors: C,
+}: {
+  color: string;
+  label: string;
+  colors: DetailColors;
+}) {
   return (
     <Box
       sx={{
@@ -171,12 +182,12 @@ function Legend({color, label}: {color: string; label: string}) {
         px: 1.4,
         py: 0.7,
         borderRadius: 999,
-        border: '1px solid rgba(255,255,255,0.16)',
-        bgcolor: 'rgba(255,255,255,0.05)',
+        border: `1px solid ${C.border}`,
+        bgcolor: C.panel,
         fontFamily: MONO,
         fontSize: 11,
         letterSpacing: '0.04em',
-        color: 'rgba(255,255,255,0.85)',
+        color: C.text2,
         whiteSpace: 'nowrap',
       }}
     >
@@ -193,6 +204,7 @@ function availColor(status: string, colors: DetailColors) {
 }
 
 export default function EquipmentDetail({id}: {id: string}) {
+  const router = useRouter();
   const {mode} = useColorScheme();
   // Frontend-only demo — item comes from the hardcoded catalog, no API.
   const item = getEquipmentById(id);
@@ -226,20 +238,35 @@ export default function EquipmentDetail({id}: {id: string}) {
   const today = startOfDay();
   const days = daysBetween(range);
   const subtotal = days * item.dailyRate;
-  const total = subtotal;
+  const tax = Math.round(subtotal * TAX_RATE * 100) / 100;
+  const total = subtotal + tax;
+  const money2 = (n: number) =>
+    n.toLocaleString('en-US', {
+      minimumFractionDigits: Number.isInteger(n) ? 0 : 2,
+      maximumFractionDigits: 2,
+    });
   const conflict = rangeOverlapsBlocked(range, blocked);
   const ac = availColor(item.availability, C);
   const canContinue = Boolean(range?.from && range?.to && !conflict);
 
-  // Frontend-only demo — no checkout/backend. The button stays disabled until a
-  // valid range is picked; clicking is a no-op (design preserved).
-  const handleReserve = () => {};
+  // Store the reservation in the demo cart (sessionStorage) and continue into
+  // the checkout flow — still frontend-only, no backend.
+  const handleReserve = () => {
+    if (!range?.from || !range?.to || conflict) return;
+    addCartItem({
+      id: item.id,
+      from: range.from.toISOString(),
+      to: range.to.toISOString(),
+      qty: 1,
+    });
+    router.push(CHECKOUT_ROUTE);
+  };
 
   // Description text + fixed-length truncation (clean cut on a word boundary,
   // then "Read More"). No line-clamp — avoids mid-letter cuts.
   const descText =
     item.description ??
-    `The ${item.name} is a workhorse ${item.category.toLowerCase()} asset stationed at ${item.depot}. Trusted on production pads across South Texas, it pairs reliable uptime (${item.utilization}% utilization YTD) with operator-friendly controls — ideal for both short pilot runs and multi-week field campaigns.`;
+    `The ${item.name} is a workhorse ${item.category.toLowerCase()} asset stationed at ${item.depot}. Trusted on production pads across South Texas, it pairs reliable uptime with operator-friendly controls — ideal for both short pilot runs and multi-week field campaigns.`;
   const DESC_LIMIT = 170; // characters shown before truncating
   const descIsLong = descText.length > DESC_LIMIT;
   const descPreview = descIsLong
@@ -911,11 +938,11 @@ export default function EquipmentDetail({id}: {id: string}) {
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
-            bgcolor: INK,
-            color: '#fff',
+            bgcolor: C.bg,
+            color: C.text,
             backgroundImage: 'none',
             borderRadius: 3,
-            border: '1px solid rgba(255,255,255,0.12)',
+            border: `1px solid ${C.border}`,
             m: {xs: 2, md: 3},
             width: '100%',
             maxHeight: {xs: '92dvh', md: '88dvh'},
@@ -949,7 +976,7 @@ export default function EquipmentDetail({id}: {id: string}) {
               position: 'absolute',
               inset: '2px',
               borderRadius: 'inherit',
-              background: INK,
+              background: C.bg,
             },
           }}
         />
@@ -962,16 +989,17 @@ export default function EquipmentDetail({id}: {id: string}) {
             top: 12,
             right: 12,
             zIndex: 5,
-            color: 'rgba(255,255,255,0.7)',
-            border: '1px solid rgba(255,255,255,0.14)',
-            bgcolor: 'rgba(0,0,0,0.25)',
+            color: C.text2,
+            border: `1px solid ${C.border}`,
+            bgcolor: C.panel,
             backdropFilter: 'blur(4px)',
-            '&:hover': {color: '#fff', bgcolor: 'rgba(255,255,255,0.1)'},
+            '&:hover': {color: C.text, bgcolor: C.border},
           }}
         >
           <X size={20} />
         </IconButton>
-        {/* animated gold ambient glow — slow drifting light inside the black */}
+        {/* animated gold ambient glow — rich depth on dark; on light it's
+            dialled right down so the panel reads crisp, not a muddy beige wash */}
         <Box
           aria-hidden
           sx={{
@@ -980,6 +1008,7 @@ export default function EquipmentDetail({id}: {id: string}) {
             overflow: 'hidden',
             pointerEvents: 'none',
             zIndex: 0,
+            opacity: isDark ? 1 : 0.28,
           }}
         >
           <Box
@@ -1042,7 +1071,7 @@ export default function EquipmentDetail({id}: {id: string}) {
         </Box>
 
         <Box
-          data-cursor-dark
+          {...(isDark ? {'data-cursor-dark': true} : {})}
           sx={{
             position: 'relative',
             zIndex: 1,
@@ -1092,7 +1121,7 @@ export default function EquipmentDetail({id}: {id: string}) {
                     fontSize: 9,
                     fontWeight: 700,
                     letterSpacing: '0.1em',
-                    color: 'rgba(255,255,255,0.5)',
+                    color: C.text3,
                   }}
                 >
                   RENTAL START
@@ -1102,7 +1131,7 @@ export default function EquipmentDetail({id}: {id: string}) {
                     fontFamily: DISPLAY,
                     fontSize: 20,
                     fontWeight: 800,
-                    color: range?.from ? GOLD : 'rgba(255,255,255,0.4)',
+                    color: range?.from ? GOLD : C.text3,
                     mt: 0.25,
                   }}
                 >
@@ -1114,7 +1143,7 @@ export default function EquipmentDetail({id}: {id: string}) {
                     : '—'}
                 </Typography>
               </Box>
-              <ArrowRight size={18} color="rgba(255,255,255,0.35)" />
+              <ArrowRight size={18} color={C.text3} />
               <Box>
                 <Typography
                   sx={{
@@ -1122,7 +1151,7 @@ export default function EquipmentDetail({id}: {id: string}) {
                     fontSize: 9,
                     fontWeight: 700,
                     letterSpacing: '0.1em',
-                    color: 'rgba(255,255,255,0.5)',
+                    color: C.text3,
                   }}
                 >
                   RENTAL END
@@ -1132,7 +1161,7 @@ export default function EquipmentDetail({id}: {id: string}) {
                     fontFamily: DISPLAY,
                     fontSize: 20,
                     fontWeight: 800,
-                    color: range?.to ? GOLD : 'rgba(255,255,255,0.4)',
+                    color: range?.to ? GOLD : C.text3,
                     mt: 0.25,
                   }}
                 >
@@ -1153,7 +1182,7 @@ export default function EquipmentDetail({id}: {id: string}) {
                 disabled={(day) => day < today}
                 unavailable={(day) => isDayBlocked(day, blocked)}
                 months={1}
-                onDark
+                onDark={isDark}
               />
             </Box>
 
@@ -1165,12 +1194,12 @@ export default function EquipmentDetail({id}: {id: string}) {
                 flexWrap: 'wrap',
                 fontFamily: MONO,
                 fontSize: 10.5,
-                color: 'rgba(255,255,255,0.55)',
+                color: C.text3,
               }}
             >
-              <Legend color={GOLD} label="Selected" />
-              <Legend color="rgba(242,139,130,0.85)" label="Unavailable" />
-              <Legend color="rgba(255,255,255,0.45)" label="Past" />
+              <Legend color={GOLD} label="Selected" colors={C} />
+              <Legend color={C.danger} label="Unavailable" colors={C} />
+              <Legend color={C.text3} label="Past" colors={C} />
             </Box>
 
             {conflict && (
@@ -1181,10 +1210,10 @@ export default function EquipmentDetail({id}: {id: string}) {
                   alignItems: 'flex-start',
                   gap: 1,
                   borderRadius: 2,
-                  bgcolor: 'rgba(192,57,43,0.18)',
+                  bgcolor: C.dangerBg,
                   p: 1.5,
                   fontSize: 12.5,
-                  color: '#F28B82',
+                  color: C.danger,
                   maxWidth: 420,
                 }}
               >
@@ -1202,122 +1231,150 @@ export default function EquipmentDetail({id}: {id: string}) {
           <Box>
             <Box
               sx={{
-                border: '1px solid rgba(255,255,255,0.14)',
+                border: `1px solid ${C.border}`,
                 borderRadius: 3,
-                p: {xs: 2.5, md: 3.5},
-                bgcolor: 'rgba(255,255,255,0.03)',
+                overflow: 'hidden',
+                bgcolor: C.panel,
+                // On light the card lifts off the warm panel as a crisp quote
+                // card; on dark the border alone carries it.
+                boxShadow: isDark ? 'none' : '0 18px 44px -20px rgba(20,18,16,0.28)',
               }}
             >
+              <Box sx={{p: {xs: 2.5, md: 3.5}}}>
+              <Typography
+                sx={{
+                  fontFamily: MONO,
+                  fontSize: 10.5,
+                  fontWeight: 700,
+                  letterSpacing: '0.24em',
+                  textTransform: 'uppercase',
+                  color: C.text3,
+                }}
+              >
+                Your estimate
+              </Typography>
               <Box
                 sx={{
+                  mt: 1.5,
                   display: 'flex',
                   alignItems: 'flex-end',
                   justifyContent: 'space-between',
                 }}
               >
-                <Box sx={{display: 'flex', alignItems: 'baseline', gap: '5px'}}>
+                <Box sx={{display: 'flex', alignItems: 'baseline', gap: '6px'}}>
                   <Typography
                     sx={{
                       fontFamily: DISPLAY,
-                      fontSize: 38,
+                      fontSize: 42,
                       fontWeight: 900,
                       letterSpacing: '-0.035em',
                       lineHeight: 1,
                       color: GOLD,
+                      fontVariantNumeric: 'tabular-nums',
                     }}
                   >
                     ${item.dailyRate.toLocaleString()}
                   </Typography>
-                  <Typography
-                    sx={{
-                      fontFamily: MONO,
-                      fontSize: 13,
-                      color: 'rgba(255,255,255,0.6)',
-                    }}
-                  >
+                  <Typography sx={{fontFamily: MONO, fontSize: 13, color: C.text2}}>
                     /day
                   </Typography>
                 </Box>
-                <Typography
-                  sx={{
-                    fontFamily: MONO,
-                    fontSize: 11.5,
-                    color: 'rgba(255,255,255,0.5)',
-                  }}
-                >
-                  ${item.weeklyRate.toLocaleString()} / wk
-                </Typography>
+                <Box sx={{textAlign: 'right'}}>
+                  <Typography
+                    sx={{
+                      fontFamily: MONO,
+                      fontSize: 9,
+                      fontWeight: 700,
+                      letterSpacing: '0.12em',
+                      textTransform: 'uppercase',
+                      color: C.text3,
+                    }}
+                  >
+                    Weekly
+                  </Typography>
+                  <Typography
+                    sx={{
+                      fontFamily: MONO,
+                      fontSize: 12.5,
+                      color: C.text2,
+                      fontVariantNumeric: 'tabular-nums',
+                    }}
+                  >
+                    ${item.weeklyRate.toLocaleString()}/wk
+                  </Typography>
+                </Box>
               </Box>
 
               <Box
                 sx={{
                   mt: 2.5,
                   pt: 2.5,
-                  borderTop: '1px solid rgba(255,255,255,0.1)',
+                  borderTop: `1px solid ${C.border}`,
                   display: 'flex',
                   flexDirection: 'column',
                   gap: 1.25,
                 }}
               >
-                <Box
-                  sx={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    fontSize: 13.5,
-                    color: 'rgba(255,255,255,0.62)',
-                  }}
-                >
+                <Box sx={{display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: 13.5, color: C.text2}}>
                   <span>
                     ${item.dailyRate.toLocaleString()} × {days || 0} days
                   </span>
                   <Box
                     component="span"
-                    sx={{color: '#fff', fontWeight: 600, fontFamily: MONO}}
+                    sx={{
+                      fontFamily: DISPLAY,
+                      fontVariantNumeric: 'tabular-nums',
+                      fontSize: 16,
+                      fontWeight: 700,
+                      letterSpacing: '-0.01em',
+                      color: C.text,
+                    }}
                   >
                     {days ? `$${subtotal.toLocaleString()}` : '—'}
                   </Box>
                 </Box>
-                <Box
-                  sx={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    fontSize: 13.5,
-                    color: 'rgba(255,255,255,0.62)',
-                  }}
-                >
-                  <span>Mobilization</span>
+                <Box sx={{display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: 13.5, color: C.text2}}>
+                  <span>Tax (8.5%)</span>
                   <Box
                     component="span"
-                    sx={{color: '#fff', fontWeight: 600, fontFamily: MONO}}
+                    sx={{
+                      fontFamily: DISPLAY,
+                      fontVariantNumeric: 'tabular-nums',
+                      fontSize: 16,
+                      fontWeight: 700,
+                      letterSpacing: '-0.01em',
+                      color: C.text,
+                    }}
                   >
-                    TBD
+                    {days ? `$${money2(tax)}` : '—'}
                   </Box>
                 </Box>
               </Box>
 
               <Box
                 sx={{
-                  mt: 2.5,
-                  pt: 2.5,
-                  borderTop: '1px solid rgba(255,255,255,0.1)',
+                  mt: 2,
+                  pt: 2,
+                  borderTop: `1px solid ${C.border}`,
                   display: 'flex',
                   justifyContent: 'space-between',
-                  alignItems: 'center',
+                  alignItems: 'baseline',
                 }}
               >
-                <Typography sx={{fontSize: 14, fontWeight: 600}}>
+                <Typography sx={{fontSize: 14, fontWeight: 600, color: C.text}}>
                   Estimated total
                 </Typography>
                 <Typography
                   sx={{
                     fontFamily: DISPLAY,
-                    fontSize: 30,
+                    fontSize: 32,
                     fontWeight: 900,
                     color: GOLD,
                     letterSpacing: '-0.035em',
+                    fontVariantNumeric: 'tabular-nums',
                   }}
                 >
-                  {days ? `$${total.toLocaleString()}` : '—'}
+                  {days ? `$${money2(total)}` : '—'}
                 </Typography>
               </Box>
 
@@ -1339,8 +1396,8 @@ export default function EquipmentDetail({id}: {id: string}) {
                     boxShadow: 'none',
                   },
                   '&.Mui-disabled': {
-                    bgcolor: 'rgba(255,255,255,0.1)',
-                    color: 'rgba(255,255,255,0.4)',
+                    bgcolor: C.border,
+                    color: C.text3,
                     border: '1px solid transparent',
                   },
                 }}
@@ -1355,14 +1412,12 @@ export default function EquipmentDetail({id}: {id: string}) {
                   justifyContent: 'center',
                   gap: 0.5,
                   fontSize: 11.5,
-                  color: canContinue
-                    ? 'rgba(255,255,255,0.55)'
-                    : 'rgba(255,255,255,0.72)',
+                  color: canContinue ? C.text3 : C.text2,
                 }}
               >
                 {canContinue ? (
                   <>
-                    <CheckCircle2 size={12} color="#34D399" /> No charge until
+                    <CheckCircle2 size={12} color={C.success} /> No charge until
                     contract is signed
                   </>
                 ) : (
@@ -1372,50 +1427,29 @@ export default function EquipmentDetail({id}: {id: string}) {
                   </>
                 )}
               </Typography>
+              </Box>{/* /padded content */}
 
+              {/* amber trust strip — full-width footer, mirrors the checkout summary */}
               <Box
                 sx={{
-                  mt: 3,
-                  pt: 3,
-                  borderTop: '1px solid rgba(255,255,255,0.1)',
+                  px: {xs: 2.5, md: 3.5},
+                  py: 2,
+                  bgcolor: C.amberBg,
+                  borderTop: `1px solid ${C.border}`,
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: 1.25,
+                  gap: 1,
+                  color: C.amberText,
                 }}
               >
-                <Box
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1,
-                    fontSize: 12.5,
-                    color: 'rgba(255,255,255,0.6)',
-                  }}
-                >
-                  <ShieldCheck size={14} color="#34D399" /> Crew &amp;
-                  operations included
+                <Box sx={{display: 'flex', alignItems: 'center', gap: 1, fontSize: 12.5}}>
+                  <ShieldCheck size={14} /> Crew &amp; operations included
                 </Box>
-                <Box
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1,
-                    fontSize: 12.5,
-                    color: 'rgba(255,255,255,0.6)',
-                  }}
-                >
-                  <Calendar size={14} color={GOLD} /> Daily &amp; weekly billing
+                <Box sx={{display: 'flex', alignItems: 'center', gap: 1, fontSize: 12.5}}>
+                  <Calendar size={14} /> Daily &amp; weekly billing
                 </Box>
-                <Box
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1,
-                    fontSize: 12.5,
-                    color: 'rgba(255,255,255,0.6)',
-                  }}
-                >
-                  <MapPin size={14} color={GOLD} /> {item.depot}
+                <Box sx={{display: 'flex', alignItems: 'center', gap: 1, fontSize: 12.5}}>
+                  <MapPin size={14} /> {item.depot}
                 </Box>
               </Box>
             </Box>

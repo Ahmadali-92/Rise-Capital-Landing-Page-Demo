@@ -4,7 +4,7 @@
 //
 // Pairing: Archivo (industrial grotesque display) + Hanken Grotesk (refined body)
 // + Space Mono (technical/data kickers).
-import {Archivo, Hanken_Grotesk, Space_Mono} from 'next/font/google';
+import {Archivo, Great_Vibes, Hanken_Grotesk, Space_Mono} from 'next/font/google';
 
 export const rcDisplay = Archivo({
   subsets: ['latin'],
@@ -27,4 +27,15 @@ export const rcMono = Space_Mono({
   display: 'swap',
 });
 
+// Signature script (checkout "type your signature" preview only) — loaded
+// separately so the landing/detail pages don't pay for it.
+export const rcScript = Great_Vibes({
+  subsets: ['latin'],
+  weight: '400',
+  variable: '--font-rc-script',
+  display: 'swap',
+});
+
 export const rcFontVars = `${rcDisplay.variable} ${rcBody.variable} ${rcMono.variable}`;
+
+export const rcCheckoutFontVars = `${rcFontVars} ${rcScript.variable}`;
